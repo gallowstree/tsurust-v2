@@ -1,0 +1,22 @@
+* TSURUST
+** DESIGN
+*** States:
+**** setup:
+- wait for players to connect
+- assign a spawn to each player
+- allow them to change/confirm
+- when all confirmations are received, move to next state
+***** Structs:
+****** Lobby
+***** Events:
+****** NEW_PLAYER
+****** CONFIRM_SPAWN
+**** turn_loop:
+- increment turn no.
+- deal tiles as necessary
+- wait for player move
+- apply move
+***** Structs:
+****** TileDealer (alt. names: Hands, Tiles)
+******* TODO rules for dealing
+****** TurnLoop
