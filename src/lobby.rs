@@ -1,24 +1,22 @@
 use crate::board::{Position, Stone};
-use crate::lobby::LobbyEvent::{NewPlayer, ConfirmPosition};
 use std::collections::HashMap;
-use crate::states::Event;
-
-// Valid events in this state
-pub enum LobbyEvent {
-    NewPlayer {name: str, pos: Position},
-    Done
-}
+use crate::states::{PlayerEvent::*, PlayerEventConsumer, EventResult};
 
 pub struct Lobby {
     pub players: HashMap<str, Stone>
 }
 
-impl Lobby {
-
-    pub fn apply(self, event: LobbyEvent) -> Lobby {
+impl PlayerEventConsumer for Lobby {
+    fn consume(self, event: ClientEvent) -> EventResult {
         match event {
-            NewPlayer {name, pos} => with_player(name, pos),
-            Done => self
+            NewPlayer {name, pos} => self.new_player(&name, pos),
+            _ => panic!("invalid for lobby event")
         }
+    }
+}
+
+impl Lobby {
+    fn new_player(self, name: &str, pos: Position) -> EventResult {
+        unimplemented!()
     }
 }
