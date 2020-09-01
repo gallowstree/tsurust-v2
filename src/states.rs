@@ -1,7 +1,9 @@
+use serde::{Serialize, Deserialize};
 use crate::board::{Position, Player};
 use crate::states::EventResult::Error;
 
-//TODO maybe PlayerAction is more appropriate?
+//TODO maybe PlayerAction/PlayerMessage/FromPlayer is more appropriate?
+#[derive(Debug, Serialize, Deserialize)]
 pub enum PlayerEvent {
     StartLobby, // Maybe this one will change. Game ID? Future...
     NewPlayer {name: String, pos: Position},
@@ -14,7 +16,7 @@ pub trait PlayerEventConsumer {
     fn consume(&mut self, event: PlayerEvent) -> EventResult;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub enum GameEvent<'a> {
     PlayerJoined{ players: Vec<&'a Player>},
     StartGame,

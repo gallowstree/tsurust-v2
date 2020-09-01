@@ -1,6 +1,8 @@
+use serde::{Serialize, Deserialize};
+
 pub type PathIndex = usize;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Player {
     pub color: PlayerColor,
     pub name: String,
@@ -18,7 +20,7 @@ impl Player {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct Position {
     pub row: usize,
     pub col: usize,
@@ -31,7 +33,7 @@ impl Position {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, Serialize, Deserialize)]
 pub enum PlayerColor {
     WHITE, RED, YELLOW,
     BLUE, GRAY, ORANGE,

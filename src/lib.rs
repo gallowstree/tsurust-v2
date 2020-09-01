@@ -2,3 +2,4 @@
 pub mod board;
 pub mod lobby;
 pub mod states;
+pub mod tsuro;
