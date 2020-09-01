@@ -38,21 +38,36 @@ async fn event_loop(mut mpsc_rx: Receiver<PlayerEvent>) {
 }
 
 async fn player_ws_loop(ws: WebSocket, mut to_event_loop: Sender<PlayerEvent>) {
-    let (ws_out, mut ws_in) = ws.split();
+    let (ws_out, mut ws_in) = ws.split(); //maybe spawn an outbound task?
 
+    // can extract to async fn
     while let Some(result) = ws_in.next().await { //and_then()?
         let msg = match result {
-            Ok(msg) if msg.is_close() => "close".to_owned(), //would probably need to break instead
-            Ok(msg) if msg.is_text() => msg.to_str().expect("expected text msg").to_owned(),
-            Ok(_) => continue,
+            Ok(msg) => parse_message(msg),
             Err(e) => {
                 eprintln!("websocket error: {}", e);
                 break;
             }
         };
 
-        println!("Got {}", msg);
+        msg.map(|msg| to_event_loop.send(msg));
     }
 
+    //player disconnected
+}
 
+fn parse_message(msg: WsMessage) -> Option<PlayerEvent> {
+    if !msg.is_text() {
+        return None;
+    }
+
+    let text = msg.to_str().expect("converting WsMessage to string");
+
+    match serde_json::from_str(text) {
+        Ok(msg) => msg,
+        Err(e) => {
+            eprintln!("Got invalid player message: msg={}, err={}", text, e);
+            None
+        }
+    }
 }
