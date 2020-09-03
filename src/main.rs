@@ -9,6 +9,7 @@ use warp::ws::{Message as WsMessage, WebSocket};
 use tsurust_v2::board::Position;
 use tsurust_v2::lobby::Lobby;
 use tsurust_v2::states::{PlayerEvent, PlayerEventConsumer};
+use tsurust_v2::states::PlayerEvent::EndLobby;
 
 #[tokio::main]
 async fn main() {
@@ -22,7 +23,7 @@ async fn main() {
         .and(warp::ws())
         .and(events_tx_filter)
         .map(move |ws: warp::ws::Ws, events_tx: Sender<PlayerEvent>| {
-            ws.on_upgrade(|socket| player_ws_loop(socket, events_tx))
+            ws.on_upgrade(|socket| client_connected(socket, events_tx))
         });
 
     warp::serve(websocket_route)
@@ -32,28 +33,38 @@ async fn main() {
 async fn event_loop(mut mpsc_rx: Receiver<PlayerEvent>) {
     println!("TsuRust event loop running!");
 
-    while let Some(event) = mpsc_rx.next().await {
-        print!("got {:?}", event);
+    loop {
+        match mpsc_rx.next().await {
+            Some(event) => println!("got {:?}", event),
+            _ => println!("wtff")
+        }
     }
 }
 
-async fn player_ws_loop(ws: WebSocket, mut to_event_loop: Sender<PlayerEvent>) {
+async fn client_connected(ws: WebSocket, mut to_event_loop: Sender<PlayerEvent>) {
     let (ws_out, mut ws_in) = ws.split(); //maybe spawn an outbound task?
+    println!("connected");
+
 
     // can extract to async fn
     while let Some(result) = ws_in.next().await { //and_then()?
-        let msg = match result {
-            Ok(msg) => parse_message(msg),
+        match result {
+            Ok(msg) => {
+                parse_message(msg).map(|msg| {
+                    println!("sending {:?}", msg);
+                    to_event_loop.clone().send(msg);
+                })
+            } ,
             Err(e) => {
                 eprintln!("websocket error: {}", e);
                 break;
             }
         };
 
-        msg.map(|msg| to_event_loop.send(msg));
+        //msg.map(|msg| to_event_loop.send(msg));
     }
 
-    //player disconnected
+    to_event_loop.send(EndLobby);
 }
 
 fn parse_message(msg: WsMessage) -> Option<PlayerEvent> {
