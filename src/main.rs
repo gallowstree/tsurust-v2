@@ -10,6 +10,7 @@ use tsurust_v2::board::Position;
 use tsurust_v2::lobby::Lobby;
 use tsurust_v2::states::{PlayerEvent, PlayerEventConsumer};
 use tsurust_v2::states::PlayerEvent::EndLobby;
+use futures::stream::SplitStream;
 
 #[tokio::main]
 async fn main() {
@@ -33,52 +34,39 @@ async fn main() {
 async fn event_loop(mut mpsc_rx: Receiver<PlayerEvent>) {
     println!("TsuRust event loop running!");
 
-    loop {
-        match mpsc_rx.next().await {
-            Some(event) => println!("got {:?}", event),
-            _ => println!("wtff")
-        }
+    while let Some(event) = mpsc_rx.next().await {
+        println!("got {:?}", event)
     }
 }
 
 async fn client_connected(ws: WebSocket, mut to_event_loop: Sender<PlayerEvent>) {
     let (ws_out, mut ws_in) = ws.split(); //maybe spawn an outbound task?
-    println!("connected");
+
+    client_message_loop(to_event_loop, ws_in).await;
 
 
-    // can extract to async fn
+    //player disconnected
+}
+
+async fn client_message_loop(mut to_event_loop: Sender<PlayerEvent>, mut ws_in: SplitStream<WebSocket>) {
     while let Some(result) = ws_in.next().await { //and_then()?
         match result {
-            Ok(msg) => {
-                parse_message(msg).map(|msg| {
-                    println!("sending {:?}", msg);
-                    to_event_loop.clone().send(msg);
-                })
-            } ,
+            Ok(msg) => handle_message(msg, &mut to_event_loop),
             Err(e) => {
                 eprintln!("websocket error: {}", e);
                 break;
             }
         };
-
-        //msg.map(|msg| to_event_loop.send(msg));
     }
-
-    to_event_loop.send(EndLobby);
 }
 
-fn parse_message(msg: WsMessage) -> Option<PlayerEvent> {
-    if !msg.is_text() {
-        return None;
-    }
+fn handle_message(msg: WsMessage, to_event_loop: &mut Sender<PlayerEvent>) {
+    if !msg.is_text() { return; }
 
     let text = msg.to_str().expect("converting WsMessage to string");
 
     match serde_json::from_str(text) {
-        Ok(msg) => msg,
-        Err(e) => {
-            eprintln!("Got invalid player message: msg={}, err={}", text, e);
-            None
-        }
-    }
+        Ok(msg) => { to_event_loop.send(msg); },
+        Err(e) => { eprintln!("Got malformed player message: msg={}, err={}", text, e); }
+    };
 }
